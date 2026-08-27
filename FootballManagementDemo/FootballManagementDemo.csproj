@@ -1,0 +1,80 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;net10.0-android;net10.0-ios;net10.0-maccatalyst;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>FootballManagementDemo</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationTitle>Football Management Demo</ApplicationTitle>
+    <ApplicationId>com.example.footballmanagementdemo</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <!-- The SDK implicitly includes all .cs files. To make Platforms\Net10\Program.cs
+       available only for the plain net10.0 build, remove it from compilation for
+       non-net10 TFMs rather than explicitly including it (which would duplicate
+       the implicit Compile item). -->
+  <ItemGroup>
+    <Compile Remove="Platforms\Net10\Program.cs" Condition="'$(TargetFramework)' != 'net10.0'" />
+  </ItemGroup>
+  <!-- Explicitly include net10-only entry files for the net10.0 build pass to ensure
+       the compiler sees the Main entry point during per-target compilation. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Include="Platforms\Net10\TopLevelMain.cs" />
+    <Compile Include="Platforms\Net10\Program.cs" />
+  </ItemGroup>
+
+  <!-- Define a NET10_0 constant for plain net10.0 builds so the Program
+       source can declare a Main entry point under a conditional compile
+       without requiring explicit Compile includes (avoids duplicate items). -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <DefineConstants>$(DefineConstants);NET10_0</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <!-- Build plain net10.0 as a library to avoid requiring a platform entry point.
+         This prevents the compiler from expecting a Main method during net10.0
+         multi-target solution builds while keeping platform TFMs as executables. -->
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <!-- Disable SDK implicit Compile items for the net10 build and include a
+         controlled set of source files to avoid duplicate Compile item errors
+         during multi-target solution builds. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+  </ItemGroup>
+
+  <!-- Avoid MSIX/Appx manifest checks for the Windows TFM when this project is not
+       intended to produce an MSIX. Set WindowsPackageType to None for the Windows
+       TargetFramework to skip MSIX packaging validation. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
+    <WindowsPackageType>None</WindowsPackageType>
+  </PropertyGroup>
+  <!-- Use a top-level entry point file (Platforms\Net10\TopLevelMain.cs) for
+       plain net10.0 builds instead of specifying a StartupObject. The file is
+       included implicitly by the SDK for net10.0 and excluded for other TFMs
+       by the Compile Remove rule above. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\FootballManagementEngine\FootballManagementEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#1B5E20" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#1B5E20" BaseSize="128,128" />
+    <MauiImage Include="Resources\Images\**" />
+    <MauiFont Include="Resources\Fonts\**" />
+  </ItemGroup>
+
+</Project>

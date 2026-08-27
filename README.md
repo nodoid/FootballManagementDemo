@@ -67,3 +67,7 @@ The original library remains under `FootballManagementEngine/`, with its project
 ## Notes
 
 The football data in the supplied library is illustrative/generated data, not licensed current squad data.
+
+## License
+
+This application (as with the library it is based off) is covered by the DILLIGAF license. Do with it what you will

@@ -1,6 +1,6 @@
 # Football Management Engine — .NET MAUI Demo
 
-This solution turns the supplied `FootballManagementEngine` into a reusable `net10.0` class library and adds a simple .NET MAUI client.
+This solution turns the `FootballManagementEngine` into a reusable `net10.0` class library and adds a simple .NET MAUI client.
 
 ## Targets
 

@@ -1,6 +1,6 @@
 # Football Management Engine — .NET MAUI Demo
 
-This solution turns the supplied `FootballManagementEngine` into a reusable `net10.0` class library and adds a simple .NET MAUI client.
+This solution turns the `FootballManagementEngine` into a reusable `net10.0` class library and adds a simple .NET MAUI client.
 
 ## Targets
 
@@ -67,3 +67,7 @@ The original library remains under `FootballManagementEngine/`, with its project
 ## Notes
 
 The football data in the supplied library is illustrative/generated data, not licensed current squad data.
+
+## License
+
+This application (as with the library it is based off) is covered by the DILLIGAF license. Do with it what you will

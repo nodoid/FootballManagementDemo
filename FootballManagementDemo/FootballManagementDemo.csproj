@@ -22,9 +22,6 @@
        available only for the plain net10.0 build, remove it from compilation for
        non-net10 TFMs rather than explicitly including it (which would duplicate
        the implicit Compile item). -->
-  <ItemGroup>
-    <Compile Remove="Platforms\Net10\Program.cs" Condition="'$(TargetFramework)' != 'net10.0'" />
-  </ItemGroup>
   <!-- Explicitly include net10-only entry files for the net10.0 build pass to ensure
        the compiler sees the Main entry point during per-target compilation. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">

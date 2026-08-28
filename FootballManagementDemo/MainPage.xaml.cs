@@ -8,34 +8,48 @@ public partial class MainPage : ContentPage
     private readonly FootballGameEngine _game;
     private readonly GameApi _api;
     private readonly SeasonEngine _season;
-    private readonly MatchSimulator _simulator;
-
     private readonly List<TeamChoice> _teams = new();
+    private readonly List<FormationChoice> _formations = new();
 
     public MainPage()
     {
         InitializeComponent();
 
-        _game = UkDatabase.Create();
+        var databasePath = Path.Combine(FileSystem.AppDataDirectory, "football-management.db");
+        _game = UkDatabase.Create(databasePath, loadExisting: true, autoSave: true, slot: "default");
         _season = new SeasonEngine(_game);
-        _simulator = new MatchSimulator();
+        _formations.AddRange(Enum.GetValues<Formation>().Select(f =>
+            new FormationChoice(f, f.ToString())));
 
-        // Seed a representative season so the UI can demonstrate the engine.
-        _season.GenerateDomesticSeason();
-        _season.GenerateFaCup();
+        FormationPicker.ItemsSource = _formations;
 
-        _game.State.Competitions["UCL"].TeamIds.AddRange(
-            new[] { "ARS", "LIV", "MCI", "MUN", "CHE", "NEW" });
-        _game.State.Competitions["UEL"].TeamIds.AddRange(
-            new[] { "AVL", "TOT", "BHA", "WHU" });
-        _game.State.Competitions["UECL"].TeamIds.AddRange(
-            new[] { "CRY", "FUL" });
-        _season.GenerateEuropeanFixtures();
+        if (_game.State.Fixtures.Count == 0)
+        {
+            _season.GenerateDomesticSeason();
+            _season.GenerateFaCup();
 
-        _api = new GameApi(_game);
+            AddEuropeanTeams();
+            _season.GenerateEuropeanFixtures();
+            _game.SaveIfConfigured();
+            SaveStatus.Text = "New career created and saved locally.";
+        }
+        else
+        {
+            SaveStatus.Text = "Saved career loaded from SQLite.";
+        }
 
         LoadTeams();
         RefreshDashboard();
+    }
+
+    private void AddEuropeanTeams()
+    {
+        if (_game.State.Competitions.TryGetValue("UCL", out var ucl))
+            ucl.TeamIds.AddRange(new[] { "ARS", "LIV", "MCI", "MUN", "CHE", "NEW" }.Where(id => !ucl.TeamIds.Contains(id)));
+        if (_game.State.Competitions.TryGetValue("UEL", out var uel))
+            uel.TeamIds.AddRange(new[] { "AVL", "TOT", "BHA", "WHU" }.Where(id => !uel.TeamIds.Contains(id)));
+        if (_game.State.Competitions.TryGetValue("UECL", out var uecl))
+            uecl.TeamIds.AddRange(new[] { "CRY", "FUL" }.Where(id => !uecl.TeamIds.Contains(id)));
     }
 
     private void LoadTeams()
@@ -51,21 +65,37 @@ public partial class MainPage : ContentPage
         }
 
         TeamPicker.ItemsSource = _teams;
+
+        if (_game.State.PlayerTeamId is not null)
+        {
+            var selected = _teams.FirstOrDefault(t => t.Id == _game.State.PlayerTeamId);
+            if (selected is not null)
+                TeamPicker.SelectedItem = selected;
+            RefreshFormationPicker();
+        }
+    }
+
+    private void RefreshFormationPicker()
+    {
+        var team = _game.GetPlayerTeam();
+        if (team is null) return;
+
+        var selected = _formations.FirstOrDefault(f => f.Formation == team.Formation);
+        if (selected is not null)
+            FormationPicker.SelectedItem = selected;
+        FormationStatus.Text = $"{team.ShortName}: {team.Formation}";
     }
 
     private void OnSelectTeamClicked(object sender, EventArgs e)
     {
         if (TeamPicker.SelectedItem is not TeamChoice choice)
         {
-            SelectionStatus.Text = "Choose a club first.";
+            SelectionStatus.Text = "Choose a team first.";
             return;
         }
 
-        var request = JsonSerializer.Serialize(
-            new { teamId = choice.Id },
-            _game.JsonOptions);
-
-        var response = _api.Handle("POST", GameApi.SelectTeamPath, request);
+        var response = _api.Handle("POST", GameApi.SelectTeamPath,
+            JsonSerializer.Serialize(new { teamId = choice.Id }, _game.JsonOptions));
 
         ApiOutput.Text = PrettyJson(response.Body);
 
@@ -73,7 +103,9 @@ public partial class MainPage : ContentPage
         {
             var team = _game.GetPlayerTeam();
             SelectionStatus.Text = $"Now managing {team?.Name} ({team?.ShortName}).";
-            EngineStatus.Text = $"API returned HTTP {response.StatusCode}. Selection persisted in GameState.";
+            RefreshFormationPicker();
+            _game.SaveIfConfigured();
+            SaveStatus.Text = "Career saved to SQLite.";
             RefreshDashboard();
         }
         else
@@ -82,10 +114,31 @@ public partial class MainPage : ContentPage
         }
     }
 
+    private void OnFormationChanged(object sender, EventArgs e)
+    {
+        if (TeamPicker.SelectedItem is not TeamChoice choice ||
+            FormationPicker.SelectedItem is not FormationChoice formation)
+            return;
+
+        var response = _api.Handle("POST", GameApi.FormationPath,
+            JsonSerializer.Serialize(new { teamId = choice.Id, formation = formation.Formation }, _game.JsonOptions));
+
+        FormationStatus.Text = response.StatusCode == 200
+            ? $"{choice.Id}: {formation.Formation} selected."
+            : $"Formation error: HTTP {response.StatusCode}.";
+
+        ApiOutput.Text = PrettyJson(response.Body);
+        _game.SaveIfConfigured();
+        SaveStatus.Text = "Formation change saved to SQLite.";
+    }
+
     private void OnAdvanceWeekClicked(object sender, EventArgs e)
     {
         _season.ProcessWeek();
+        _game.SaveIfConfigured();
+
         EngineStatus.Text = $"Advanced to {_game.State.CurrentDateUtc:dd MMM yyyy}. Weekly finance/injury processing completed.";
+        SaveStatus.Text = "Career saved to SQLite.";
         RefreshDashboard();
     }
 
@@ -107,15 +160,50 @@ public partial class MainPage : ContentPage
             return;
         }
 
-        var home = _game.State.Teams[fixture.HomeTeamId];
-        var away = _game.State.Teams[fixture.AwayTeamId];
-        var result = _simulator.Simulate(fixture, home, away);
-        _game.ApplyResult(result);
+        if (!int.TryParse(MatchMinutesEntry.Text, out var matchMinutes))
+            matchMinutes = 90;
+        if (!int.TryParse(DurationEntry.Text, out var durationSeconds))
+            durationSeconds = 8;
+        if (!int.TryParse(HighlightsEntry.Text, out var highlightCount))
+            highlightCount = 10;
 
-        EngineStatus.Text =
-            $"Result: {home.ShortName} {result.HomeGoals}–{result.AwayGoals} {away.ShortName}. " +
-            "The result was applied through FootballGameEngine.";
-        RefreshDashboard();
+        matchMinutes = Math.Clamp(matchMinutes, 1, 120);
+        durationSeconds = Math.Clamp(durationSeconds, 0, 300);
+        highlightCount = Math.Clamp(highlightCount, 0, 50);
+
+        var response = _api.Handle("POST", GameApi.SimulatePath,
+            JsonSerializer.Serialize(new
+            {
+                fixtureId = fixture.Id,
+                matchMinutes,
+                durationSeconds,
+                includeHighlights = IncludeHighlightsSwitch.IsToggled,
+                highlightCount
+            }, _game.JsonOptions));
+
+        ApiOutput.Text = PrettyJson(response.Body);
+
+        if (response.StatusCode == 200)
+        {
+            using var doc = JsonDocument.Parse(response.Body);
+            var result = doc.RootElement.GetProperty("result");
+            EngineStatus.Text =
+                $"Result: {team.ShortName} match simulated — " +
+                $"{result.GetProperty("homeGoals").GetInt32()}–{result.GetProperty("awayGoals").GetInt32()}. " +
+                "Highlights and cup rules were processed by the engine.";
+            SaveStatus.Text = "Match result and updated statistics saved to SQLite.";
+            RefreshDashboard();
+        }
+        else
+        {
+            EngineStatus.Text = $"Simulation error: HTTP {response.StatusCode}.";
+        }
+    }
+
+    private void OnSaveClicked(object sender, EventArgs e)
+    {
+        _game.Save("default");
+        SaveStatus.Text = $"Saved to SQLite: {_game.State.CurrentDateUtc:dd MMM yyyy HH:mm}.";
     }
 
     private void RefreshDashboard()
@@ -123,15 +211,17 @@ public partial class MainPage : ContentPage
         SeasonLabel.Text = _game.State.Season.ToString();
         FixtureCountLabel.Text = _game.State.Fixtures.Count.ToString();
 
-        var team = _game.GetPlayerTeam();
         var gameResponse = _api.Handle("GET", GameApi.GamePath);
         ApiOutput.Text = PrettyJson(gameResponse.Body);
 
+        var team = _game.GetPlayerTeam();
         if (team is null)
         {
             NextFixtureLabel.Text = "Select a club to see its next fixture.";
             return;
         }
+
+        RefreshFormationPicker();
 
         var next = _game.Fixtures(teamId: team.Id)
             .FirstOrDefault(f => !f.IsPlayed && !f.Postponed);
@@ -144,8 +234,10 @@ public partial class MainPage : ContentPage
 
         var home = _game.State.Teams[next.HomeTeamId];
         var away = _game.State.Teams[next.AwayTeamId];
+        var competition = _game.State.Competitions.TryGetValue(next.CompetitionId, out var c) ? c.Name : next.CompetitionId;
+
         NextFixtureLabel.Text =
-            $"{team.ShortName} next: {next.DateUtc:ddd dd MMM} — {home.ShortName} vs {away.ShortName}";
+            $"{competition}: {next.DateUtc:ddd dd MMM} — {home.ShortName} vs {away.ShortName}";
     }
 
     private string PrettyJson(string json)
@@ -162,8 +254,7 @@ public partial class MainPage : ContentPage
     }
 
     private sealed record TeamChoice(string Id, string DisplayName);
-
+    private sealed record FormationChoice(Formation Formation, string DisplayName);
     private sealed record TeamListResponse(List<TeamDto> Teams);
-
     private sealed record TeamDto(string Id, string Name, string ShortName, string LeagueId);
 }

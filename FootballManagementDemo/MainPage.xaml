@@ -10,54 +10,45 @@
         <VerticalStackLayout Padding="24" Spacing="18">
 
             <VerticalStackLayout Spacing="4">
-                <Label Text="FOOTBALL MANAGEMENT"
-                       FontSize="14"
-                       FontAttributes="Bold"
+                <Label Text="FOOTBALL MANAGEMENT" FontSize="14" FontAttributes="Bold"
                        TextColor="{StaticResource PrimaryGreen}" />
-                <Label Text="Server-agnostic API demo"
-                       FontSize="30"
-                       FontAttributes="Bold" />
-                <Label Text="The same C# game engine is being called directly from a .NET MAUI client."
-                       FontSize="15"
-                       TextColor="{StaticResource MutedText}" />
+                <Label Text="Updated engine demo" FontSize="30" FontAttributes="Bold" />
+                <Label Text="Formation tactics, match highlights, cup rules and SQLite career saves."
+                       FontSize="15" TextColor="{StaticResource MutedText}" />
             </VerticalStackLayout>
 
-            <Border BackgroundColor="{StaticResource CardBackground}"
-                    StrokeShape="RoundRectangle 16"
-                    Padding="18">
+            <Border BackgroundColor="{StaticResource CardBackground}" StrokeShape="RoundRectangle 16" Padding="18">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="1. Select your club"
-                           FontSize="20"
-                           FontAttributes="Bold" />
-                    <Picker x:Name="TeamPicker"
-                            Title="Choose a team"
-                            ItemDisplayBinding="{Binding DisplayName}" />
-                    <Button Text="Manage this team"
-                            Clicked="OnSelectTeamClicked"
-                            BackgroundColor="{StaticResource PrimaryGreen}"
-                            TextColor="White"
-                            CornerRadius="10" />
-                    <Label x:Name="SelectionStatus"
-                           Text="No club selected."
-                           FontSize="14"
+                    <Label Text="1. Select your club" FontSize="20" FontAttributes="Bold" />
+                    <Picker x:Name="TeamPicker" Title="Choose a team" ItemDisplayBinding="{Binding DisplayName}" />
+                    <Button Text="Manage this team" Clicked="OnSelectTeamClicked"
+                            BackgroundColor="{StaticResource PrimaryGreen}" TextColor="White" CornerRadius="10" />
+                    <Label x:Name="SelectionStatus" Text="No club selected." FontSize="14"
                            TextColor="{StaticResource MutedText}" />
                 </VerticalStackLayout>
             </Border>
 
+            <Border BackgroundColor="{StaticResource CardBackground}" StrokeShape="RoundRectangle 16" Padding="18">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="2. Tactical formation" FontSize="20" FontAttributes="Bold" />
+                    <Picker x:Name="FormationPicker" Title="Choose formation"
+                            ItemDisplayBinding="{Binding DisplayName}" SelectedIndexChanged="OnFormationChanged" />
+                    <Label Text="Changing the formation changes attacking, midfield and defensive balance and therefore match probabilities."
+                           FontSize="13" TextColor="{StaticResource MutedText}" />
+                    <Label x:Name="FormationStatus" Text="No formation selected." FontSize="14" />
+                </VerticalStackLayout>
+            </Border>
+
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                <Border Grid.Column="0"
-                        BackgroundColor="{StaticResource CardBackground}"
-                        StrokeShape="RoundRectangle 16"
-                        Padding="16">
+                <Border Grid.Column="0" BackgroundColor="{StaticResource CardBackground}"
+                        StrokeShape="RoundRectangle 16" Padding="16">
                     <VerticalStackLayout Spacing="5">
                         <Label Text="SEASON" FontSize="12" TextColor="{StaticResource MutedText}" />
                         <Label x:Name="SeasonLabel" Text="2026" FontSize="24" FontAttributes="Bold" />
                     </VerticalStackLayout>
                 </Border>
-                <Border Grid.Column="1"
-                        BackgroundColor="{StaticResource CardBackground}"
-                        StrokeShape="RoundRectangle 16"
-                        Padding="16">
+                <Border Grid.Column="1" BackgroundColor="{StaticResource CardBackground}"
+                        StrokeShape="RoundRectangle 16" Padding="16">
                     <VerticalStackLayout Spacing="5">
                         <Label Text="FIXTURES" FontSize="12" TextColor="{StaticResource MutedText}" />
                         <Label x:Name="FixtureCountLabel" Text="0" FontSize="24" FontAttributes="Bold" />
@@ -65,55 +56,61 @@
                 </Border>
             </Grid>
 
-            <Border BackgroundColor="{StaticResource CardBackground}"
-                    StrokeShape="RoundRectangle 16"
-                    Padding="18">
+            <Border BackgroundColor="{StaticResource CardBackground}" StrokeShape="RoundRectangle 16" Padding="18">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="2. API call demonstration"
-                           FontSize="20"
-                           FontAttributes="Bold" />
-                    <Label Text="GET /api/game"
-                           FontAttributes="Bold" />
-                    <Editor x:Name="ApiOutput"
-                            HeightRequest="150"
-                            IsReadOnly="True"
-                            AutoSize="TextChanges"
-                            FontFamily="Courier New"
-                            FontSize="12" />
+                    <Label Text="3. Match simulation" FontSize="20" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                            <Label Text="Match minutes" FontSize="12" />
+                            <Entry x:Name="MatchMinutesEntry" Text="90" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Playback seconds" FontSize="12" />
+                            <Entry x:Name="DurationEntry" Text="8" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="2" Spacing="4">
+                            <Label Text="Highlights" FontSize="12" />
+                            <Entry x:Name="HighlightsEntry" Text="10" Keyboard="Numeric" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <HorizontalStackLayout Spacing="10">
+                        <Switch x:Name="IncludeHighlightsSwitch" IsToggled="True" />
+                        <Label Text="Include highlights" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Button Text="Simulate next match" Clicked="OnSimulateClicked" CornerRadius="10" />
+                    <Label x:Name="NextFixtureLabel" Text="No fixture selected." FontSize="15" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border BackgroundColor="{StaticResource CardBackground}"
-                    StrokeShape="RoundRectangle 16"
-                    Padding="18">
+            <Border BackgroundColor="{StaticResource CardBackground}" StrokeShape="RoundRectangle 16" Padding="18">
                 <VerticalStackLayout Spacing="12">
-                    <Label Text="3. Game engine"
-                           FontSize="20"
-                           FontAttributes="Bold" />
-                    <Label x:Name="NextFixtureLabel"
-                           Text="No fixture selected."
-                           FontSize="15" />
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                        <Button Grid.Column="0"
-                                Text="Advance one week"
-                                Clicked="OnAdvanceWeekClicked"
-                                CornerRadius="10" />
-                        <Button Grid.Column="1"
-                                Text="Simulate next match"
-                                Clicked="OnSimulateClicked"
-                                CornerRadius="10" />
-                    </Grid>
-                    <Label x:Name="EngineStatus"
-                           FontSize="14"
+                    <Label Text="4. Career persistence" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="The demo stores the complete career, league tables, player statistics, injuries, cups, fixtures and other game state in SQLite under the platform's application data folder."
+                           FontSize="13" TextColor="{StaticResource MutedText}" />
+                    <Button Text="Save career now" Clicked="OnSaveClicked" CornerRadius="10" />
+                    <Label x:Name="SaveStatus" Text="SQLite save status" FontSize="14"
                            TextColor="{StaticResource MutedText}" />
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="Runs on Android, iOS, Mac Catalyst and Windows."
-                   HorizontalOptions="Center"
-                   FontSize="13"
-                   TextColor="{StaticResource MutedText}" />
+            <Border BackgroundColor="{StaticResource CardBackground}" StrokeShape="RoundRectangle 16" Padding="18">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="5. Server-agnostic API" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="The MAUI app calls the same GameApi used by other clients."
+                           FontSize="13" TextColor="{StaticResource MutedText}" />
+                    <Editor x:Name="ApiOutput" HeightRequest="180" IsReadOnly="True"
+                            AutoSize="TextChanges" FontFamily="Courier New" FontSize="12" />
+                    <Label x:Name="EngineStatus" FontSize="14" TextColor="{StaticResource MutedText}" />
+                </VerticalStackLayout>
+            </Border>
 
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Advance one week" Clicked="OnAdvanceWeekClicked" CornerRadius="10" />
+                <Button Grid.Column="1" Text="Save" Clicked="OnSaveClicked" CornerRadius="10" />
+            </Grid>
+
+            <Label Text="Runs on Android, iOS, Mac Catalyst and Windows."
+                   HorizontalOptions="Center" FontSize="13" TextColor="{StaticResource MutedText}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

@@ -116,7 +116,8 @@ public static class FixtureGenerator
     }
 
     private static List<string> Rotate(List<string> x) =>
-        new List<string> { x[0], x[^1] }.Concat(x.Skip(1).Take(x.Count - 2)).ToList();
+        new System.Collections.Generic.List<string> { x[0], x[^1] }
+            .Concat(x.Skip(1).Take(x.Count - 2)).ToList();
 
     private static DateTime Next(DateTime d, DayOfWeek target)
     {

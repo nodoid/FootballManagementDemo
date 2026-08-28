@@ -1,163 +1,87 @@
-# Football Management Engine
+# Football Management Engine — .NET MAUI Demo
 
-A server-agnostic C# football management simulation engine targeting **.NET 10**.
+This solution turns the `FootballManagementEngine` into a reusable `net10.0` class library and adds a simple .NET MAUI client.
 
-## Requirements
+## Targets
 
-- .NET 10 SDK
+The MAUI project declares all four major .NET MAUI desktop/mobile targets:
 
-Verify the SDK with:
+- Android
+- iOS
+- Mac Catalyst
+- Windows
 
-```powershell
-dotnet --version
-```
+The UI uses only .NET MAUI controls and the supplied library, so the application logic is shared across platforms.
 
-The project targets `net10.0` and does not reference ASP.NET Core, Kestrel, `HttpListener`, or any other HTTP server implementation.
+## What the demo shows
 
-## Run from the project root
+1. Creates the supplied `UkDatabase`.
+2. Generates domestic, FA Cup and sample European fixtures.
+3. Calls `GameApi.Handle("GET", "/api/teams")` to populate the club picker.
+4. Calls `POST /api/game/select-team` when a club is selected.
+5. Calls `GET /api/game` and displays the JSON response.
+6. Uses `SeasonEngine.ProcessWeek()` to advance time and process weekly finance/injuries.
+7. Uses `MatchSimulator` and `FootballGameEngine.ApplyResult()` to simulate the next match.
 
-After extracting the archive, open PowerShell in the extracted directory and run:
+No HTTP server is required: this demonstrates the library's server-agnostic application API being consumed directly by a cross-platform client.
 
-```powershell
-dotnet restore
-dotnet build
-dotnet run
-```
+## Build / run
 
-You can also use the supplied launchers:
+Install the .NET 10 SDK and the required .NET MAUI workloads on your development machine.
 
-```powershell
-.\run.ps1
-```
-
-On Windows CMD:
-
-```bat
-run.bat
-```
-
-On Linux/macOS:
+From this directory:
 
 ```bash
-./run.sh
+dotnet restore FootballManagementDemo.sln
 ```
 
-## User team selection
+Then run a target appropriate to your machine, for example:
 
-The application exposes a server-agnostic API through `src/GameApi.cs`. The user can retrieve the selectable team list, select a team, and retrieve the current selection.
-
-### List teams
-
-```http
-GET /api/teams
+```bash
+dotnet build FootballManagementDemo/FootballManagementDemo.csproj -f net10.0-android
+dotnet build FootballManagementDemo/FootballManagementDemo.csproj -f net10.0-windows10.0.19041.0
+dotnet build FootballManagementDemo/FootballManagementDemo.csproj -f net10.0-maccatalyst
+dotnet build FootballManagementDemo/FootballManagementDemo.csproj -f net10.0-ios
 ```
 
-Response:
-
-```json
-{
-  "teams": [
-    {
-      "id": "ARS",
-      "name": "Arsenal",
-      "shortName": "ARS",
-      "leagueId": "PL"
-    }
-  ]
-}
-```
-
-### Select a team
-
-```http
-POST /api/game/select-team
-Content-Type: application/json
-
-{
-  "teamId": "ARS"
-}
-```
-
-A successful response is HTTP-style status `200` and contains the selected team.
-
-### Get the current selection
-
-```http
-GET /api/game
-```
-
-Response:
-
-```json
-{
-  "playerTeamId": "ARS",
-  "playerTeam": {
-    "id": "ARS",
-    "name": "Arsenal",
-    "shortName": "ARS",
-    "leagueId": "PL"
-  }
-}
-```
-
-If no team has been selected, `playerTeamId` and `playerTeam` are `null`.
-
-## Calling the API from a host
-
-`GameApi` deliberately does not open a network port. A host supplies the HTTP method, path, and optional request body and translates the returned `ApiResponse` into its own server response.
-
-```csharp
-var response = api.Handle(
-    request.Method,
-    request.Path,
-    request.Body);
-
-// Host-specific response mapping:
-// status = response.StatusCode
-// body   = response.Body
-```
-
-This keeps the game/application layer independent of the server technology. The same API can be hosted by ASP.NET Core, a different .NET web framework, a serverless adapter, a custom server, or called directly by a client/test harness without changing `GameApi`.
-
-## JavaScript example
-
-```javascript
-const teamsResponse = await fetch('/api/teams');
-const { teams } = await teamsResponse.json();
-
-const selectedTeam = teams[0];
-
-const selectionResponse = await fetch('/api/game/select-team', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ teamId: selectedTeam.id })
-});
-
-const selection = await selectionResponse.json();
-console.log(selection);
-```
+For an iOS or Mac Catalyst deployment you will need the normal Apple/Xcode signing environment. Android needs an Android SDK/emulator or device; Windows needs the Windows App SDK environment supported by your installed MAUI workload.
 
 ## Architecture
 
-- `src/Domain.cs` — game state, teams, players, fixtures and results
-- `src/FixtureGenerator.cs` — fixture generation
-- `src/LeagueTable.cs` — league standings
-- `src/MatchSimulator.cs` — match simulation
-- `src/TransferEngine.cs` — transfers and weekly wages
-- `src/SeasonEngine.cs` — season generation and rollover
-- `src/GameEngine.cs` — main application/game service, including team selection and JSON save/load
-- `src/GameApi.cs` — server-agnostic API/application boundary
-- `src/UkDatabase.cs` — English football seed data
-- `src/Program.cs` — console example showing the API calls
+```text
+FootballManagementDemo (MAUI)
+        |
+        | direct C# calls
+        v
+FootballManagementEngine (net10.0)
+        |
+        +-- GameApi
+        +-- FootballGameEngine
+        +-- SeasonEngine
+        +-- MatchSimulator
+        +-- UkDatabase
+```
 
-## State and persistence
+The original library remains under `FootballManagementEngine/`, with its project changed from an executable to a reusable class library.
 
-The selected team is stored in `GameState.PlayerTeamId`, so it is included in the normal JSON save/load state handled by the game engine.
+## Notes
 
-## API documentation
+The football data in the supplied library is illustrative/generated data, not licensed current squad data.
 
-See [`docs/API.md`](docs/API.md) for the complete endpoint contract, request/response examples, host integration guidance, and error behaviour.
 
-## Data note
+## Updated engine integration
 
-The club/player data is an illustrative generated starter database and is not intended to represent current official squads. A commercial product should use appropriately licensed football data.
+The MAUI demo now references the current FootballManagementEngine source, including:
+
+- Formation-based match simulation
+- Match highlights and configurable simulation duration
+- Cup replays, extra time and penalties
+- Player statistics and injury/suspension state
+- SQLite game persistence and save slots
+- Optional resume of the `default` career at startup
+
+The MAUI app stores its SQLite database at `FileSystem.AppDataDirectory/football-management.db`.
+
+## License
+
+Code licenced under the DILLIGAF licence
